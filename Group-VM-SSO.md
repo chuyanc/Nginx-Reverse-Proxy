@@ -12,7 +12,7 @@ We aim to create a Group VM Single Sign-On (SSO) system for the team, ensuring b
 ### Environment Setting Up
 1. We are using **Ubuntu 22.04** instead of the Virtual Box + Vagrant in reference 1, so some steps might be different. But I'll refer some of the gif in the reference for the operations on user interface.
 
-2. Please ensure **at least 4GiB of RAM** for your VM instance (like t2.medium or t2.large for Amazon EC2)
+2. Please ensure **at least 4GiB of RAM** for your Keycloak + Vault VM instance (like t2.medium or t2.large for Amazon EC2)
 
 ## Solution
 ### 1. Vault + KeyCloak OIDC
@@ -141,9 +141,127 @@ policies="admin"
 
 
 #### 1.8 Use OIDC to log in Vault UI
-Go to https://{your IP Address}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in.
+This is part of the user flow. Go to https://{your IP Address}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in.
 
-(*Remember to log out the admin account via Keycloak first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin, it will occur error: claim "email" not found in token)
+(*If you are logged in with admin account of Keycloak, remember to log out first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin, it will occur error: claim "email" not found in token)
+
+### 2. Configuring Vault SSH Secrets engine for Signed SSH Certificates
+#### 2.1 Enabling and Configuring SSH Engine
+##### 1) Enable Secrets Engine
+```
+$ vault secrets enable -path=ssh-client-signer ssh
+```
+##### 2) Configure CA for signing keys
+```
+$ vault write ssh-client-signer/config/ca generate_signing_key=true
+```
+##### 3) Configure Signing Role.
+```
+$ vault write ssh-client-signer/roles/demo -<<"EOH"
+{
+ "algorithm_signer": "rsa-sha2-512",
+ "allow_user_certificates": true,
+ "allowed_users": "ubuntu",
+ "allowed_extensions": "permit-pty,permit-port-forwarding",
+ "default_extensions": [
+   {
+     "permit-pty": ""
+   }
+ ],
+ "key_type": "ca",
+ "default_user": "ubuntu",
+ "ttl": "30m0s"
+}
+EOH
+```
+#### 2.2 Configure SSH Host
+*The SSH Host is the VM group members wants to access, so these configurations happen on the Group VM, instead of the Vault server.
+##### 1) Enter SSH Host VM and download public key
+```
+$ sudo curl -k https://<vault-server-ip>:8200/v1/ssh-client-signer/public_key -o /etc/ssh/trusted-user-ca-keys.pem
+```
+##### 2) Configure CA public key as trusted
+```
+$ sudo nano /etc/ssh/sshd_config
+```
+then add the following line: 
+```
+TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
+```
+Restart the ssh daemon:
+```
+$ sudo systemctl restart sshd
+```
+#### 2.3 Client Authentication
+This step is part of the user flow, happens in the user's local machine (make sure to have Vault installed).
+##### 1）Generate SSH Keypair
+```
+$ ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vagrant/.ssh/id_rsa): 
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/vagrant/.ssh/id_rsa
+Your public key has been saved in /home/vagrant/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:/rZ/5imrr/vW8Ex10sibkgGiJpSzUfgLCdrXFbLlvIo vagrant@ssh-client
+The key's randomart image is:
++---[RSA 3072]----+
+|     +o o.       |
+|  . *  *o .      |
+| o o B.oo. . . o |
+|. . * =  .  . + +|
+|   . + .S    o =.|
+|     ..o    + +  |
+|    E . .    B   |
+|         .. o *. |
+|         .*X=*o  |
++----[SHA256]-----+
+```
+
+##### 2) Configure Vault CLI
+```
+export VAULT_ADDR=https://{your IP address}:8200
+export VAULT_SKIP_VERIFY=true 
+## Use Token Copied from UI (see the gif in reference 2)
+export VAULT_TOKEN={copied token}
+echo $VAULT_TOKEN | vault login -
+```
+
+##### 3) Signing SSH Public Key
+```
+vault write -field=signed_key ssh-client-signer/sign/demo \
+    public_key=@$HOME/.ssh/id_rsa.pub > $HOME/.ssh/id_rsa-cert.pub
+```
+This will authorize the user with vault, and request for the public key at ‘~/.ssh/id_rsa.pub’ to be signed by the CA, then generate the SSH certificate.
+
+To check the details of the signed certificate, run:
+```
+ssh-keygen -Lf ~/.ssh/id_rsa-cert.pub
+```
+
+It will show similar results as below:
+```
+/home/vagrant/.ssh/id_rsa-cert.pub:
+        Type: ssh-rsa-cert-v01@openssh.com user certificate
+        Public key: RSA-CERT SHA256:/rZ/5imrr/vW8Ex10sibkgGiJpSzUfgLCdrXFbLlvIo
+        Signing CA: RSA SHA256:uKzJOaH/cPaxmDDgrwAEoo0eY9YUKYh2dqvrno1UYEc (using ssh-rsa)
+        Key ID: "vault-oidc-testing@example.com-feb67fe629abaffbd6f04c75d2c89b9201a22694b351f80b09dad715b2e5bc8a"
+        Serial: 9812201999919852695
+        Valid: from 2020-12-18T01:17:26 to 2020-12-18T01:27:56
+        Principals: 
+                ubuntu
+        Critical Options: (none)
+        Extensions: 
+                permit-pty
+```
+
+**After doing this, the user can directly access the group VMs they have access to by running:**
+```
+ssh ubuntu@{VM IP address}
+```
+
+
 
 
 
