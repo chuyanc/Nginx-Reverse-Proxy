@@ -73,6 +73,10 @@ $ sudo docker run \
   quay.io/keycloak/keycloak:19.0.1 \
   start-dev
 ```
+If it's not your first time running Keycloak on this machine, and there exists a 'keycloak' container, directly use
+```
+$ sudo docker start keycloak
+```
 
 #### 1.4 Configure Vault client and create testing user in Keycloak
 Access Keycloak UI via: https://{your IP Address}:8443/, and follow the UI operation steps in Reference 1 for set vault client on keycloak and create test user.
@@ -112,7 +116,12 @@ $ vault write auth/oidc/config \
         oidc_client_secret="$KC_CLIENT_SECRET" \
         default_role="default"
 ```
-(*if doesn’t work, maybe is unknown authority issue, make sure the CA is updated and restart vault and then unseal again)
+(*if doesn’t work, use the following command to check the vault logs:
+```
+$ sudo journalctl -u vault.service -n 50
+```
+
+if is unknown authority issue, make sure the CA is updated and restart vault and then unseal again)
 ```
 $ sudo systemctl restart vault
 ```
@@ -126,10 +135,15 @@ allowed_redirect_uris="${VAULT_CLI}/oidc/callback" \
 user_claim="email" \
 policies="admin"
 ```
-(*make sure the Valid redirect URIs in Keycloak Vault client UI exactly match the URIs input above!)
+(*There might be redirect URI differences in the vault.json when import client, so make sure the Valid redirect URIs in Keycloak Vault client exactly match the URIs input above!)
+![image](https://github.com/chuyanc/WRDS-Documentations/assets/103159777/0f8cbed9-44dd-4d7b-9417-41e17b1c7c03)
+
+
 
 #### 1.8 Use OIDC to log in Vault UI
 Go to https://{your IP Address}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in.
+
+(*Remember to log out the admin account via Keycloak first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin, it will occur error: claim "email" not found in token)
 
 
 
