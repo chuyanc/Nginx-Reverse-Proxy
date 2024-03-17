@@ -42,12 +42,12 @@ $ sudo systemctl restart vault
 ```
 
 #### 1.2 Get Vault token and keys, unseal, then log in to Vault
-Access Vault UI via: https://{your IP Address}:8200/. Follow the UI operation steps of Initialize, Unseal and Login in Reference 1.
+Access Vault UI via: https://{vault-server-ip}:8200/. Follow the UI operation steps of Initialize, Unseal and Login in Reference 1.
 
 #### 1.3 Initialize and Run Keycloak
 ##### 1) Self-sign certificate
 ```
-$ openssl req -x509 -nodes -newkey rsa:2048 -keyout myserver.key -out myserver.crt -days 365 -subj "/CN=myserver" -addext "subjectAltName = IP: {your Public IP}"
+$ openssl req -x509 -nodes -newkey rsa:2048 -keyout myserver.key -out myserver.crt -days 365 -subj "/CN=myserver" -addext "subjectAltName = IP: {vault-server-ip}"
 $ chmod 755 myserver.key
 ```
 ##### 2) Update CA
@@ -79,7 +79,7 @@ $ sudo docker start keycloak
 ```
 
 #### 1.4 Configure Vault client and create testing user in Keycloak
-Access Keycloak UI via: https://{your IP Address}:8443/, and follow the UI operation steps in Reference 1 for set vault client on keycloak and create test user.
+Access Keycloak UI via: https://{vault-server-ip}:8443/, and follow the UI operation steps in Reference 1 for set vault client on keycloak and create test user.
 
 #### 1.5 Access Vault CLI
 ```
@@ -107,7 +107,7 @@ $ vault policy write admin admin.hcl
 ```
 $ vault auth enable oidc
 
-$ export KC_DOMAIN="https://{your ip addr}:8443/realms/master"
+$ export KC_DOMAIN="https://{vault-server-ip}:8443/realms/master"
 $ export KC_CLIENT_ID=vault
 $ export KC_CLIENT_SECRET={your-client-secret}
 $ vault write auth/oidc/config \
@@ -127,7 +127,7 @@ $ sudo systemctl restart vault
 ```
 Then, we'll create the 'default' role for OIDC:
 ```
-$ export VAULT_UI=https://{your public ip address}:8200
+$ export VAULT_UI=https://{vault-server-ip}:8200
 $ export VAULT_CLI=https://127.0.0.1:8250
 $ vault write auth/oidc/role/default \
 allowed_redirect_uris="${VAULT_UI}/ui/vault/auth/oidc/oidc/callback" \
@@ -141,7 +141,7 @@ policies="admin"
 
 
 #### 1.8 Use OIDC to log in Vault UI
-This is part of the user flow. Go to https://{your IP Address}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in.
+This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in.
 
 (*If you are logged in with admin account of Keycloak, remember to log out first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin, it will occur error: claim "email" not found in token)
 
@@ -178,7 +178,7 @@ EOH
 *The SSH Host is the VM group members wants to access, so these configurations happen on the Group VM, instead of the Vault server.
 ##### 1) Enter SSH Host VM and download public key
 ```
-$ sudo curl -k https://<vault-server-ip>:8200/v1/ssh-client-signer/public_key -o /etc/ssh/trusted-user-ca-keys.pem
+$ sudo curl -k https://{vault-server-ip}:8200/v1/ssh-client-signer/public_key -o /etc/ssh/trusted-user-ca-keys.pem
 ```
 ##### 2) Configure CA public key as trusted
 ```
@@ -221,7 +221,7 @@ The key's randomart image is:
 
 ##### 2) Configure Vault CLI
 ```
-export VAULT_ADDR=https://{your IP address}:8200
+export VAULT_ADDR=https://{vault-server-ip}:8200
 export VAULT_SKIP_VERIFY=true 
 ## Use Token Copied from UI (see the gif in reference 2)
 export VAULT_TOKEN={copied token}
@@ -258,7 +258,7 @@ It will show similar results as below:
 
 **After doing this, the user can directly access the group VMs they have access to by running:**
 ```
-ssh ubuntu@{VM IP address}
+ssh ubuntu@{vm-public-ip}
 ```
 
 
