@@ -87,7 +87,7 @@ dbms.connector.https.enabled=false
 # dbms.connector.https.advertised_address=:7473
 ```
 
-3.2 Then use ```$ sudo systemctl status neo4j``` to restart the server.
+3.2 Then use ```$ sudo systemctl restart neo4j``` to restart the server.
 
 3.3 After allowing all the http traffics to the VM instance, we can directly visit the Neo4j browser via http://public-ip:7474, which means Neo4j is configured successfully.
 
