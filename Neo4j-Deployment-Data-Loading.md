@@ -131,7 +131,7 @@ To load nodes:
 CALL apoc.load.json("https://raw.githubusercontent.com/WRDSTech/competition-graph-frontend/main/src/assets/data/dow30_relation_backend.json") YIELD value
              UNWIND value.nodes AS nodeData
              MERGE (node:Node {id: nodeData.id})
-             SET node.name = nodeData.name;
+             SET node.name = nodeData.name, node.graph = 'dow30';
 ```
 
 To load links:
