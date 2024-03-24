@@ -101,14 +101,17 @@ sp 500: https://github.com/WRDSTech/competition-graph-frontend/blob/main/src/ass
 #### 1. Install APOC library
 1.1 Download APOC JAR file: Go to https://github.com/neo4j-contrib/neo4j-apoc-procedures and download the APOC JAR file which corresponds to your current Neo4j version.
 
-1.2 Install the APOC library: Copy the downloaded APOC JAR file into the "plugins" directory of your Neo4j installation.
+1.2 Download GDS JAR file: Go to https://github.com/neo4j/graph-data-science and download the GDS JAR file which corresponds to your current Neo4j version.
+
+1.2 Install the APOC library: Copy the downloaded JAR files into the "plugins" directory of your Neo4j installation (usually ```/var/lib/neo4j/plugins```).
 
 1.3 Open Neo4j configuration file at ```/etc/neo4j/neo4j.conf```, and add the following line at the end of file to allow APOC procedures:
 
 ```
 dbms.security.procedures.unrestricted=apoc.*
+dbms.security.procedures.unrestricted=gds.*
 ```
-1.4 Then use ```$ sudo systemctl status neo4j``` to restart the server and install APOC library.
+1.4 Then use ```$ sudo systemctl restart neo4j``` to restart the server and install APOC library.
 
 #### 2. Login to the Neo4j server and check APOC validation
 2.1 In order to login, we can either use the user interface on http://public-ip:7474 or use command line to enter:
@@ -144,7 +147,21 @@ CALL apoc.load.json("https://raw.githubusercontent.com/WRDSTech/competition-grap
              MERGE (sourceNode)-[:RELATIONSHIP_TYPE {id: linkData.id, category: linkData.category}]->(targetNode);
 ```
 
-The same steps also apply to sp 500 dataset.
+The same steps also apply to sp 500 dataset:
+
+```
+CALL apoc.load.json("https://raw.githubusercontent.com/WRDSTech/competition-graph-frontend/main/src/assets/data/sp500_relation_backend.json") YIELD value
+             UNWIND value.nodes AS nodeData
+             MERGE (node:Node {id: nodeData.id})
+             SET node.name = nodeData.name, node.graph = 'sp500';
+```
+```
+CALL apoc.load.json("https://raw.githubusercontent.com/WRDSTech/competition-graph-frontend/main/src/assets/data/sp500_relation_backend.json") YIELD value
+             UNWIND value.links AS linkData
+             MATCH (sourceNode:Node {id: linkData.source})
+             MATCH (targetNode:Node {id: linkData.target})
+             MERGE (sourceNode)-[:RELATIONSHIP_TYPE {id: linkData.id, category: linkData.category}]->(targetNode);
+```
 
 
 
