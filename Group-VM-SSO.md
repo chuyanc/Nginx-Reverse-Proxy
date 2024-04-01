@@ -277,13 +277,15 @@ $ echo $VAULT_TOKEN | vault login -
 
 ##### 3) Signing SSH Public Key
 
-First, use command ```vault list ssh-client-signer/roles``` to see what are the signer roles available
+First, use command ```vault list ssh-client-signer/roles``` to see what are the available signer roles.
+
+And then, use
 
 ```
 vault write -field=signed_key ssh-client-signer/sign/{signer-role-name} \
     public_key=@$HOME/.ssh/id_rsa.pub > $HOME/.ssh/id_rsa-cert.pub
 ```
-This will authorize the user with vault, and request for the public key at ‘~/.ssh/id_rsa.pub’ to be signed by the CA, then generate the SSH certificate.
+to authorize the user with vault, and request for the public key at ‘~/.ssh/id_rsa.pub’ to be signed by the CA, then generate the SSH certificate.
 
 *If the user is requesting a signer role which is beyond the access of the current logged in user role, it will show 403 permission denied error.
 
