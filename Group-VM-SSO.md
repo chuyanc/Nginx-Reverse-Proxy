@@ -307,7 +307,8 @@ It will show similar results as below:
 ```
 $ ssh {vm-username}@{vm-public-ip}
 ```
-* If user of role1 are trying to use the key to access VM2, it will show error "Permission denied (publickey)"
+
+*If user of role1 are trying to use the key to access VM2, it will show error "Permission denied (publickey)"
 
 
 
