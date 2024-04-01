@@ -55,11 +55,11 @@ $ chmod 755 myserver.key
 $ sudo cp myserver.crt /usr/local/share/ca-certificates/
 $ sudo update-ca-certificates
 ```
-#### 3) Install Docker
+##### 3) Install Docker
 ```
 $ curl -sSL https://get.docker.com/ | sudo bash
 ```
-#### 4) Run Keycloak
+##### 4) Run Keycloak
 ```
 $ sudo docker run \
   --name keycloak \
