@@ -167,7 +167,9 @@ EOF
 
 
 #### 1.8 Use OIDC to log in Vault UI
-This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in. Users also have to indicate a role they want to log in as, if the user is not in the groups that the role is bounded with, "error validating claims: claim "groups" does not match any associated bound claim values" will occur.
+This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in. 
+
+* Users also have to indicate a role they want to log in as, if the user is not in the groups that the role is bounded with, "error validating claims: claim "groups" does not match any associated bound claim values" will occur.
 
 (*If you are logged in with admin account of Keycloak, remember to log out first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin in this time, it will occur error: claim "email" not found in token)
 
@@ -189,7 +191,7 @@ $ vault write ssh-client-signer/roles/{signer-role-name} -<<"EOH"
 {
  "algorithm_signer": "rsa-sha2-512",
  "allow_user_certificates": true,
- "allowed_users": "{vm-user-name}",
+ "allowed_users": "{vm-username}",
  "allowed_extensions": "permit-pty,permit-port-forwarding",
  "default_extensions": [
    {
@@ -197,7 +199,7 @@ $ vault write ssh-client-signer/roles/{signer-role-name} -<<"EOH"
    }
  ],
  "key_type": "ca",
- "default_user": "{vm-user-name}",
+ "default_user": "{vm-username}",
  "ttl": "30m0s"
 }
 EOH
@@ -222,8 +224,18 @@ Restart the ssh daemon:
 ```
 $ sudo systemctl restart sshd
 ```
+##### 3) Add a new user to VM
+
+As said in section 2.1 step3, we have to create a new user on VMs which correspond to the "allowed_users" we set in signing role configuation. If you'd like to grant the user with ability to execute commands with superuser privileges, you'll need to add them to the sudo group:
+
+```
+$ sudo adduser {vm_username}
+$ sudo usermod -aG sudo {vm_username}
+```
+
 #### 2.3 Client Authentication
 This step is part of the user flow, happens in the user's local machine (make sure to have Vault installed).
+
 ##### 1）Generate SSH Keypair
 ```
 $ ssh-keygen
@@ -251,23 +263,28 @@ The key's randomart image is:
 
 ##### 2) Configure Vault CLI
 ```
-export VAULT_ADDR=https://{vault-server-ip}:8200
-export VAULT_SKIP_VERIFY=true 
+$ export VAULT_ADDR=https://{vault-server-ip}:8200
+$ export VAULT_SKIP_VERIFY=true 
 ## Use Token Copied from UI (see the gif in reference 2)
-export VAULT_TOKEN={copied token}
-echo $VAULT_TOKEN | vault login -
+$ export VAULT_TOKEN={copied token}
+$ echo $VAULT_TOKEN | vault login -
 ```
 
 ##### 3) Signing SSH Public Key
+
+First, use command ```vault list ssh-client-signer/roles``` to see what are the signer roles available
+
 ```
-vault write -field=signed_key ssh-client-signer/sign/demo \
+vault write -field=signed_key ssh-client-signer/sign/{signer-role-name} \
     public_key=@$HOME/.ssh/id_rsa.pub > $HOME/.ssh/id_rsa-cert.pub
 ```
 This will authorize the user with vault, and request for the public key at ‘~/.ssh/id_rsa.pub’ to be signed by the CA, then generate the SSH certificate.
 
+*If the user is requesting a signer role which is beyond the access of the current logged in user role, it will show 403 permission denied error.
+
 To check the details of the signed certificate, run:
 ```
-ssh-keygen -Lf ~/.ssh/id_rsa-cert.pub
+$ ssh-keygen -Lf ~/.ssh/id_rsa-cert.pub
 ```
 
 It will show similar results as below:
@@ -288,8 +305,9 @@ It will show similar results as below:
 
 **After doing this, the user can directly access the group VMs they have access to by running:**
 ```
-ssh ubuntu@{vm-public-ip}
+$ ssh {vm-username}@{vm-public-ip}
 ```
+* If user of role1 are trying to use the key to access VM2, it will show error "Permission denied (publickey)"
 
 
 
