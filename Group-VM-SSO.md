@@ -167,9 +167,9 @@ EOF
 
 
 #### 1.8 Use OIDC to log in Vault UI
-This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in. We also have to say a rule 
+This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in. Users also have to indicate a role they want to log in as, if the user is not in the groups that the role is bounded with, "error validating claims: claim "groups" does not match any associated bound claim values" will occur.
 
-(*If you are logged in with admin account of Keycloak, remember to log out first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin, it will occur error: claim "email" not found in token)
+(*If you are logged in with admin account of Keycloak, remember to log out first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin in this time, it will occur error: claim "email" not found in token)
 
 ### 2. Configuring Vault SSH Secrets engine for Signed SSH Certificates
 #### 2.1 Enabling and Configuring SSH Engine
