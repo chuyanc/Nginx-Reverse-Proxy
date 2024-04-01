@@ -111,7 +111,7 @@ Open a new file {policy-name}.hcl, and write the policy to indicate which capabi
 
 Generally speaking, we can enable the access of certain ssh signer role they have access to (created in section 2.1) and a path to see all the ssh signer roles available in vault:
 ```
-path "ssh-client-signer/sign/demo" {
+path "ssh-client-signer/sign/{signer-role-name}" {
     capabilities = ["create", "update"]
 }
 
@@ -162,7 +162,7 @@ EOF
 (*There might be redirect URI differences in the vault.json when import client, make sure the Valid redirect URIs set in Keycloak Vault client in section 1.4 exactly match the URIs input above!)
 
 
-**You can repeat 1.6 and 1.7 to create more different roles with different policies and groups bound claims.**
+*You can repeat 1.6 and 1.7 to create more different roles with different policies and groups bound claims, and use ```vault list auth/oidc/role``` command to see what roles were created.
 
 
 
@@ -181,13 +181,15 @@ $ vault secrets enable -path=ssh-client-signer ssh
 ```
 $ vault write ssh-client-signer/config/ca generate_signing_key=true
 ```
-##### 3) Configure Signing Role.
+##### 3) Configure Signing Role
+
+Assume we want to have different usernames to log into different VMs, let's say we created 3 different roles following section 1.6 and 1.7: role1, role2, role3, and they can access VM1, VM2, VM3 respectively. We can add VM users: vm-user1, vm-user2, vm-user3 on VM1, VM2, VM3 respectively following section 2.2, and create 3 ssh signer roles like:
 ```
-$ vault write ssh-client-signer/roles/demo -<<"EOH"
+$ vault write ssh-client-signer/roles/{signer-role-name} -<<"EOH"
 {
  "algorithm_signer": "rsa-sha2-512",
  "allow_user_certificates": true,
- "allowed_users": "ubuntu",
+ "allowed_users": "{vm-user-name}",
  "allowed_extensions": "permit-pty,permit-port-forwarding",
  "default_extensions": [
    {
@@ -195,11 +197,13 @@ $ vault write ssh-client-signer/roles/demo -<<"EOH"
    }
  ],
  "key_type": "ca",
- "default_user": "ubuntu",
+ "default_user": "{vm-user-name}",
  "ttl": "30m0s"
 }
 EOH
 ```
+then add the capabilities of "create" and "update" for path "ssh-client-signer/roles/k8s-admin" as said in section 1.6.
+
 #### 2.2 Configure SSH Host
 *The SSH Host is the VM group members wants to access, so these configurations happen on the Group VM, instead of the Vault server.
 ##### 1) Enter SSH Host VM and download public key
