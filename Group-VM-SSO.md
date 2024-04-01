@@ -55,6 +55,11 @@ $ chmod 755 myserver.key
 $ sudo cp myserver.crt /usr/local/share/ca-certificates/
 $ sudo update-ca-certificates
 ```
+then restart vault
+```
+$ sudo systemctl restart vault
+```
+
 ##### 3) Install Docker
 ```
 $ curl -sSL https://get.docker.com/ | sudo bash
