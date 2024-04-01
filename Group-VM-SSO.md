@@ -78,8 +78,23 @@ If it's not your first time running Keycloak on this machine, and there exists a
 $ sudo docker start keycloak
 ```
 
-#### 1.4 Configure Vault client and create testing user in Keycloak
-Access Keycloak UI via: https://{vault-server-ip}:8443/, and follow the UI operation steps in Reference 1 for set vault client on keycloak and create test user.
+#### 1.4 Set up Keycloak through admin dashboard UI
+##### 1) Set vault client and create user
+Access Keycloak UI via: https://{vault-server-ip}:8443/, log in as admin using the credentials we set above, and follow the UI operation steps in Reference 1 for set vault client on keycloak and create user. 
+
+Remember to modify the redirect URIs ip address to the real ip address of your vault server:![image](https://github.com/chuyanc/WRDS-Documentations/assets/103159777/d7c1615b-bf6d-4f97-8e38-cae232838ff3)
+
+##### 2) Add mapper for group claim
+In the admin dashboard, go to tab: Clients > [Client] > Client Scopes > [vault-dedicated (the scope with description = "Dedicated scope and mappers for this client")]
+
+And then add a mapper by configuration: "Group Membership", then set the other fields according to this picture, click "save": <img width="1068" alt="image" src="https://github.com/chuyanc/WRDS-Documentations/assets/103159777/754c71fc-706f-452a-bab4-922c1f474e65">
+
+##### 3) Create groups and assign users to groups
+In the Groups tab on Keycloak admin dashboard, click "Create group" to add groups.
+
+In User-Groups tab, we can also click "Join Group" to assign some groups to the user. <img width="1908" alt="image" src="https://github.com/chuyanc/WRDS-Documentations/assets/103159777/ca4ae7bc-995e-4903-9d60-75a6548c1f39">
+
+
 
 #### 1.5 Access Vault CLI
 ```
@@ -91,16 +106,22 @@ $ export VAULT_ADDR='https://127.0.0.1:8200'
 $ vault login $VAULT_TOKEN
 ```
 
-#### 1.6 Create Admin Policy
-Open a new file admin.hcl, and write:
+#### 1.6 Create Policies
+Open a new file {policy-name}.hcl, and write the policy to indicate which capability of which path you'd like to give access to the users with this policy.
+
+Generally speaking, we can enable the access of certain ssh signer role they have access to (created in section 2.1) and a path to see all the ssh signer roles available in vault:
 ```
-path "*" {
-    capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+path "ssh-client-signer/sign/demo" {
+    capabilities = ["create", "update"]
+}
+
+path "ssh-client-signer/roles" {
+    capabilities = ["read", "list"]
 }
 ```
-then
+then assign the policy to certain policy name
 ```
-$ vault policy write admin admin.hcl
+$ vault policy write {policy-name} {policy-name}.hcl
 ```
 
 #### 1.7 Configure OIDC Auth
@@ -114,7 +135,7 @@ $ vault write auth/oidc/config \
         oidc_discovery_url="$KC_DOMAIN" \
         oidc_client_id="$KC_CLIENT_ID" \
         oidc_client_secret="$KC_CLIENT_SECRET" \
-        default_role="default"
+        default_role="{role-name}"
 ```
 (*if doesn’t work, use the following command to check the vault logs:
 ```
@@ -125,23 +146,28 @@ if is unknown authority issue, make sure the CA is updated and restart vault and
 ```
 $ sudo systemctl restart vault
 ```
-Then, we'll create the 'default' role for OIDC:
+Then, we'll create a role for OIDC:
 ```
-$ export VAULT_UI=https://{vault-server-ip}:8200
-$ export VAULT_CLI=https://127.0.0.1:8250
-$ vault write auth/oidc/role/default \
-allowed_redirect_uris="${VAULT_UI}/ui/vault/auth/oidc/oidc/callback" \
-allowed_redirect_uris="${VAULT_CLI}/oidc/callback" \
-user_claim="email" \
-policies="admin"
+vault write auth/oidc/role/{role-name} -<<EOF
+{
+  "allowed_redirect_uris":["https://3.209.163.26:8200/ui/vault/auth/oidc/oidc/callback", "https://127.0.0.1:8250/oidc/callback"],
+  "user_claim": "email",
+  "policies": ["{policy-name}"],
+  "bound_claims": {"groups":["{group-name}"]}
+}
+EOF
 ```
-(*There might be redirect URI differences in the vault.json when import client, so make sure the Valid redirect URIs in Keycloak Vault client exactly match the URIs input above!)
-![image](https://github.com/chuyanc/WRDS-Documentations/assets/103159777/0f8cbed9-44dd-4d7b-9417-41e17b1c7c03)
+({group-name} is the name of groups you created using Keycloak admin dashboard UI in section 1.4)
+
+(*There might be redirect URI differences in the vault.json when import client, make sure the Valid redirect URIs set in Keycloak Vault client in section 1.4 exactly match the URIs input above!)
+
+
+**You can repeat 1.6 and 1.7 to create more different roles with different policies and groups bound claims.**
 
 
 
 #### 1.8 Use OIDC to log in Vault UI
-This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in.
+This is part of the user flow. Go to https://{vault-server-ip}:8200/ and select OIDC as the log in method, follow the last UI operation step in Reference 1 to log in. We also have to say a rule 
 
 (*If you are logged in with admin account of Keycloak, remember to log out first, otherwise the email and password input box will be skipped and directly let you log in Vault as Keycloak admin. And if you didn't add an email for Keycloak admin, it will occur error: claim "email" not found in token)
 
